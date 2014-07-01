@@ -24,7 +24,7 @@ func main() {
 	go func() {
 		for {
 			dd := <-metaChan
-			go handleWord(dd.size, doneChan, dd.wordChan, wg)
+			go handleWord(dd.size, doneChan, dd.wordChan, &wg)
 		}
 	}()
 
@@ -53,14 +53,16 @@ func main() {
 	// We could range over all channels and close them?
 }
 
-func handleWord(size int, done <-chan struct{}, wordSizedChan chan string, wg sync.WaitGroup) {
+func handleWord(size int, done <-chan struct{}, wordSizedChan chan string, wg *sync.WaitGroup) {
 	count := 0
-	for word := range wordSizedChan {
+LOOP:
+	for {
 		select {
 		case <-done:
 			close(wordSizedChan)
 			log.Println("Closing wordSizedChan")
-		default:
+			break LOOP
+		case word := <-wordSizedChan:
 			fmt.Println(word, size)
 			count++
 		}
