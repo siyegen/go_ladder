@@ -48,7 +48,11 @@ func main() {
 		sizedChan <- word
 	}
 	close(doneChan)
-	wg.Wait()
+	for size, ch := range chanMap {
+		fmt.Println("Closing channel for", size)
+		close(ch)
+	}
+	// wg.Wait()
 	// close(metaChan)
 	// We could range over all channels and close them?
 }
@@ -68,5 +72,5 @@ LOOP:
 		}
 	}
 	fmt.Printf("Size %d words: %d\n", size, count)
-	wg.Done()
+	// wg.Done()
 }
