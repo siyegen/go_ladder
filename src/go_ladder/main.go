@@ -37,11 +37,9 @@ func main() {
 		if !ok {
 			sizedChan = make(chan string)
 			chanMap[len(word)] = sizedChan
-			// On creation we need to setup the chan to get data
 			metaChan <- WordResult{len(word), sizedChan}
 			fmt.Println("New Chan", len(word))
 		}
-		// Send the word over, our work is finished
 		sizedChan <- word
 	}
 	// Wait for shit to finish, maybe select with kill later
@@ -53,26 +51,26 @@ func main() {
 	<-finishedChan
 }
 
-func handleWord(size int, wordSizedChan chan string) {
+func handleWord(size int, wordSizedChan chan string) int {
 	count := 0
-	for word := range wordSizedChan {
-		fmt.Println("handleWord", word)
+	for _ = range wordSizedChan {
 		count++
 	}
 	fmt.Printf("Size %d words: %d\n", size, count)
+	return count
 }
 
 func handleSizedChan(metaChan chan WordResult) chan struct{} {
 	finished := make(chan struct{})
 	var wg sync.WaitGroup
+	total := 0
 	go func() {
 		for {
 			dd := <-metaChan
-			fmt.Println("adding wg")
 			wg.Add(1)
 			go func() {
-				handleWord(dd.size, dd.wordChan)
-				fmt.Println("wg.done")
+				count := handleWord(dd.size, dd.wordChan)
+				total += count
 				wg.Done()
 			}()
 		}
@@ -81,6 +79,7 @@ func handleSizedChan(metaChan chan WordResult) chan struct{} {
 	go func() {
 		wg.Wait()
 		fmt.Println("time to close chan")
+		fmt.Println("Total!", total)
 		close(finished)
 	}()
 
