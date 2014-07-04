@@ -43,7 +43,6 @@ func main() {
 		sizedChan <- word
 	}
 	// Wait for shit to finish, maybe select with kill later
-	time.Sleep(3 * time.Second)
 	for _, ch := range chanMap {
 		close(ch)
 	}
@@ -55,6 +54,11 @@ func handleWord(size int, wordSizedChan chan string) int {
 	count := 0
 	for _ = range wordSizedChan {
 		count++
+	}
+	if size == 10 {
+		// Want to make sure even though the channel is closed, I can still do shit here
+		time.Sleep(3 * time.Second)
+		fmt.Println("Just proving a point")
 	}
 	fmt.Printf("Size %d words: %d\n", size, count)
 	return count
