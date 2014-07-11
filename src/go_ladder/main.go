@@ -19,11 +19,16 @@ type WordNode struct {
 	connected []*WordNode
 }
 
+func (w *WordNode) String() string {
+	return w.value
+}
+
 type WordGraph struct {
 	nodes map[string]*WordNode
 }
 
 func (w *WordGraph) add(node *WordNode) {
+	w.nodes[node.value] = node
 	for _, currNode := range w.nodes {
 		diff := 0
 		for i, width := 0, 0; i < len(currNode.value); i += width {
@@ -37,7 +42,10 @@ func (w *WordGraph) add(node *WordNode) {
 			}
 			width = size
 		}
-		currNode.connected = append(currNode.connected, node)
+		// shouldn't have todo this, pull out and fix
+		if diff <= 1 {
+			currNode.connected = append(currNode.connected, node)
+		}
 	}
 }
 
@@ -52,7 +60,7 @@ func main() {
 
 	var fin sync.WaitGroup
 
-	file, err := os.Open("./small_words")
+	file, err := os.Open("./words")
 	if err != nil {
 		log.Fatal("Can't open file", err)
 	}
@@ -98,7 +106,7 @@ func handleWord(size int, wordSizedChan chan string) (int, *WordGraph) {
 			value:     currWord,
 			connected: make([]*WordNode, 0),
 		}
-		wordGraph.nodes[currWord] = wordNode
+		wordGraph.add(wordNode)
 		count++
 	}
 
