@@ -6,12 +6,39 @@ import (
 	"log"
 	"os"
 	"sync"
-	"time"
+	"unicode/utf8"
 )
 
 type WordResult struct {
 	size     int
 	wordChan chan string
+}
+
+type WordNode struct {
+	value     string
+	connected []*WordNode
+}
+
+type WordGraph struct {
+	nodes map[string]*WordNode
+}
+
+func (w *WordGraph) add(node *WordNode) {
+	for _, currNode := range w.nodes {
+		diff := 0
+		for i, width := 0, 0; i < len(currNode.value); i += width {
+			runeVal, size := utf8.DecodeRuneInString(currNode.value[i:])
+			otherRuneVal, _ := utf8.DecodeRuneInString(node.value[i:])
+			if runeVal != otherRuneVal {
+				diff++
+			}
+			if diff > 1 {
+				break
+			}
+			width = size
+		}
+		currNode.connected = append(currNode.connected, node)
+	}
 }
 
 func main() {
@@ -25,7 +52,7 @@ func main() {
 
 	var fin sync.WaitGroup
 
-	file, err := os.Open("./words")
+	file, err := os.Open("./small_words")
 	if err != nil {
 		log.Fatal("Can't open file", err)
 	}
@@ -37,12 +64,10 @@ func main() {
 		word := scanner.Text()
 		// Try to get channel for n size from map, otherwise create
 		sizedChan, ok := chanMap[len(word)]
-		// Maybe get all sizedChans first, and then wg.Add(len(map))
 		if !ok {
 			sizedChan = make(chan string)
 			chanMap[len(word)] = sizedChan
 			metaChan <- WordResult{len(word), sizedChan}
-			// fmt.Println("New Chan", len(word))
 		}
 		sizedChan <- word
 	}
@@ -65,18 +90,19 @@ func main() {
 	fmt.Println("Total!", totalCount)
 }
 
-func handleWord(size int, wordSizedChan chan string) int {
+func handleWord(size int, wordSizedChan chan string) (int, *WordGraph) {
 	count := 0
-	if size == 10 {
-		// Want to make sure even though the channel is closed, I can still do shit here
-		time.Sleep(2 * time.Millisecond)
-		fmt.Println("Just proving a point")
-	}
-	for _ = range wordSizedChan {
+	wordGraph := &WordGraph{make(map[string]*WordNode)}
+	for currWord := range wordSizedChan {
+		wordNode := &WordNode{
+			value:     currWord,
+			connected: make([]*WordNode, 0),
+		}
+		wordGraph.nodes[currWord] = wordNode
 		count++
 	}
-	// fmt.Printf("Size %d words: %d\n", size, count)
-	return count
+
+	return count, wordGraph
 }
 
 func handleSizedChan(metaChan chan WordResult) chan int {
@@ -86,7 +112,8 @@ func handleSizedChan(metaChan chan WordResult) chan int {
 		for {
 			dd := <-metaChan
 			go func() {
-				count := handleWord(dd.size, dd.wordChan)
+				count, gg := handleWord(dd.size, dd.wordChan)
+				fmt.Println(gg)
 				finished <- count
 			}()
 		}
