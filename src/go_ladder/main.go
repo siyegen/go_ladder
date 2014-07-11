@@ -22,6 +22,8 @@ func main() {
 
 	finishedChan := handleSizedChan(metaChan)
 
+	var fin sync.WaitGroup
+
 	file, err := os.Open("./words")
 	if err != nil {
 		log.Fatal("Can't open file", err)
@@ -34,6 +36,7 @@ func main() {
 		word := scanner.Text()
 		// Try to get channel for n size from map, otherwise create
 		sizedChan, ok := chanMap[len(word)]
+		// Maybe get all sizedChans first, and then wg.Add(len(map))
 		if !ok {
 			sizedChan = make(chan string)
 			chanMap[len(word)] = sizedChan
@@ -42,49 +45,51 @@ func main() {
 		}
 		sizedChan <- word
 	}
-	// Wait for shit to finish, maybe select with kill later
+
+	totalCount := 0
+	fin.Add(len(chanMap))
 	for _, ch := range chanMap {
 		close(ch)
 	}
+	go func() {
+		for {
+			num := <-finishedChan
+			totalCount += num
+			fin.Done()
+		}
+	}()
+
 	fmt.Println("Waiting for shit to finish")
-	<-finishedChan
+	time.Sleep(1 * time.Second)
+	fin.Wait()
+	fmt.Println("Total!", totalCount)
 }
 
 func handleWord(size int, wordSizedChan chan string) int {
 	count := 0
-	for _ = range wordSizedChan {
-		count++
-	}
 	if size == 10 {
 		// Want to make sure even though the channel is closed, I can still do shit here
-		time.Sleep(3 * time.Second)
+		time.Sleep(2 * time.Second)
 		fmt.Println("Just proving a point")
+	}
+	for _ = range wordSizedChan {
+		count++
 	}
 	fmt.Printf("Size %d words: %d\n", size, count)
 	return count
 }
 
-func handleSizedChan(metaChan chan WordResult) chan struct{} {
-	finished := make(chan struct{})
-	var wg sync.WaitGroup
-	total := 0
+func handleSizedChan(metaChan chan WordResult) chan int {
+	finished := make(chan int)
+
 	go func() {
 		for {
 			dd := <-metaChan
-			wg.Add(1)
 			go func() {
 				count := handleWord(dd.size, dd.wordChan)
-				total += count
-				wg.Done()
+				finished <- count
 			}()
 		}
-	}()
-
-	go func() {
-		wg.Wait()
-		fmt.Println("time to close chan")
-		fmt.Println("Total!", total)
-		close(finished)
 	}()
 
 	return finished
