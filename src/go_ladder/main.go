@@ -15,6 +15,7 @@ type WordResult struct {
 }
 
 func main() {
+
 	fmt.Println("Hi Words")
 
 	chanMap := make(map[int]chan string)
@@ -41,7 +42,7 @@ func main() {
 			sizedChan = make(chan string)
 			chanMap[len(word)] = sizedChan
 			metaChan <- WordResult{len(word), sizedChan}
-			fmt.Println("New Chan", len(word))
+			// fmt.Println("New Chan", len(word))
 		}
 		sizedChan <- word
 	}
@@ -60,7 +61,6 @@ func main() {
 	}()
 
 	fmt.Println("Waiting for shit to finish")
-	time.Sleep(1 * time.Second)
 	fin.Wait()
 	fmt.Println("Total!", totalCount)
 }
@@ -69,13 +69,13 @@ func handleWord(size int, wordSizedChan chan string) int {
 	count := 0
 	if size == 10 {
 		// Want to make sure even though the channel is closed, I can still do shit here
-		time.Sleep(2 * time.Second)
+		time.Sleep(2 * time.Millisecond)
 		fmt.Println("Just proving a point")
 	}
 	for _ = range wordSizedChan {
 		count++
 	}
-	fmt.Printf("Size %d words: %d\n", size, count)
+	// fmt.Printf("Size %d words: %d\n", size, count)
 	return count
 }
 
